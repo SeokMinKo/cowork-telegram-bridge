@@ -1,4 +1,5 @@
 .env
+config/chats.json
 data/*.db
 data/*.db.bak
 logs/
