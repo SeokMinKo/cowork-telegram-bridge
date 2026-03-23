@@ -2,9 +2,9 @@
 import { Server }               from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { initDb }            from "./store/db";
+import { initDb, getDb }    from "./store/db";
 import { loadConfig }        from "./config/loader";
-import { initClient }        from "./telegram/client";
+import { initClient, sendText, editMessage } from "./telegram/client";
 import { startPoller, stopPoller } from "./telegram/poller";
 import { getMessages }       from "./tools/get_messages";
 import { sendMessage }       from "./tools/send_message";
@@ -13,13 +13,37 @@ import { markHandledTool }   from "./tools/mark_handled";
 import { listProjects }      from "./tools/list_projects";
 import { getBotStatus }      from "./tools/get_bot_status";
 import { runAlert }          from "./tools/run_alert";
+import { createSendProgress } from "./tools/send_progress";
+import { initSessionMap }    from "./store/session_map";
+import { createProgressServer } from "./http/progress_server";
+import { MessageTracker }    from "./http/message_tracker";
 
 const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS ?? "30000", 10);
+const PROGRESS_PORT    = parseInt(process.env.PROGRESS_PORT ?? "18080", 10);
+const HOOK_SECRET      = process.env.HOOK_SECRET ?? "cowork-bridge-secret";
+
+const tgAdapter = { sendText, editMessage };
+const tracker   = new MessageTracker();
+let sendProgressFn: ReturnType<typeof createSendProgress>;
 
 function bootstrap() {
-  initDb(); loadConfig(); initClient();
+  const db = initDb();
+  initSessionMap(db);
+  loadConfig();
+  initClient();
   startPoller(POLL_INTERVAL_MS);
-  console.error(`[cowork-telegram-bridge] 서버 시작 (폴링: ${POLL_INTERVAL_MS/1000}초)`);
+
+  sendProgressFn = createSendProgress(tgAdapter);
+
+  // Start HTTP progress server for hook events
+  const progressServer = createProgressServer({
+    port: PROGRESS_PORT,
+    hookSecret: HOOK_SECRET,
+    tracker,
+    tg: tgAdapter,
+  });
+
+  console.error(`[cowork-telegram-bridge] 서버 시작 (폴링: ${POLL_INTERVAL_MS/1000}초, progress: :${progressServer.port})`);
 }
 
 const server = new Server(
@@ -36,6 +60,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     { name: "list_projects",  description: "등록된 프로젝트 목록 조회",              inputSchema: { type: "object", properties: {} } },
     { name: "get_bot_status", description: "봇 상태 및 운영 지표 조회",              inputSchema: { type: "object", properties: {} } },
     { name: "run_alert",      description: "프로젝트 채팅으로 알림 전송",            inputSchema: { type: "object", required: ["project_id","title","body"], properties: { project_id: { type: "string" }, title: { type: "string" }, body: { type: "string" }, level: { type: "string", enum: ["info","success","warning","error"] }, file_path: { type: "string" } } } },
+    { name: "send_progress",  description: "작업 진행 상황을 Telegram에 실시간 전송 (세션 등록 + 활성화)", inputSchema: { type: "object", required: ["project_id","chat_id","message_id","status","phase"], properties: { project_id: { type: "string" }, chat_id: { type: "number" }, thread_id: { type: "number" }, message_id: { type: "number" }, status: { type: "string" }, phase: { type: "string", enum: ["thinking","tool","done"] }, session_id: { type: "string" } } } },
   ],
 }));
 
@@ -51,6 +76,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
       case "list_projects":  result = await listProjects();                 break;
       case "get_bot_status": result = await getBotStatus();                 break;
       case "run_alert":      result = await runAlert(args as any);          break;
+      case "send_progress":  result = await sendProgressFn(args as any);    break;
       default: return { content: [{ type: "text", text: `알 수 없는 도구: ${name}` }], isError: true };
     }
     return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };

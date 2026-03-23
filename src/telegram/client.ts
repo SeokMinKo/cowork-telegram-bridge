@@ -57,6 +57,23 @@ export async function sendDocument(opts: SendDocumentOptions): Promise<TgMessage
   return json.result;
 }
 
+export async function editMessage(opts: { chat_id: number; message_id: number; text: string }): Promise<TgMessage> {
+  try {
+    return await call<TgMessage>("editMessageText", {
+      chat_id: opts.chat_id,
+      message_id: opts.message_id,
+      text: opts.text,
+      parse_mode: "HTML",
+    });
+  } catch (err) {
+    // "message is not modified" is expected when content is identical
+    if (String(err).includes("message is not modified")) {
+      return { message_id: opts.message_id };
+    }
+    throw err;
+  }
+}
+
 export async function getUpdates(offset: number): Promise<unknown[]> {
   return call<unknown[]>("getUpdates", { offset, timeout: 5 });
 }

@@ -45,6 +45,16 @@ CREATE TABLE IF NOT EXISTS sent_messages (
 CREATE TABLE IF NOT EXISTS meta (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS session_map (
+  session_id    TEXT PRIMARY KEY,
+  chat_id       INTEGER NOT NULL,
+  thread_id     INTEGER,
+  project_id    TEXT NOT NULL,
+  tg_message_id INTEGER,
+  is_active     INTEGER NOT NULL DEFAULT 0,
+  started_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at    TEXT NOT NULL DEFAULT (datetime('now', '+2 hours'))
 );`;
 
 const SEED_SQL = `
