@@ -49,10 +49,7 @@
   "license": "MIT",
   "compatibility": {
     "claude_desktop": ">=0.10.0",
-    "platforms": ["darwin"],
-    "runtimes": {
-      "bun": ">=1.1.0"
-    }
+    "platforms": ["darwin"]
   },
   "user_config": {
     "TELEGRAM_BOT_TOKEN": {
