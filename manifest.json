@@ -29,8 +29,7 @@
     { "name": "list_conversation_topics", "description": "프로젝트의 대화 토픽 목록 조회" }
   ],
   "server": {
-    "type": "node",
-    "entry_point": "src/server.ts",
+    "type": "stdio",
     "mcp_config": {
       "command": "/Users/lov2fn/.bun/bin/bun",
       "args": [
