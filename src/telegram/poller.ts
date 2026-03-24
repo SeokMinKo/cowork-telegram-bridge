@@ -1,7 +1,8 @@
 import { getUpdates } from "./client";
 import { insertPending } from "../store/pending";
 import { getPollOffset, setPollOffset, setMeta } from "../store/meta";
-import { findProjectByChatAndThread, findProjectByKeyword, getConfig } from "../config/loader";
+import { findProjectByChatAndThread, findProjectByKeyword, findTopicSyncProject, getConfig } from "../config/loader";
+import { getTopicByThread } from "../store/conversation_topics";
 import { filterAllowed } from "../security/allowlist";
 
 let _timer: ReturnType<typeof setInterval> | null = null;
@@ -27,8 +28,29 @@ export async function pollOnce(): Promise<void> {
     const text     = msg.text ?? msg.caption ?? null;
     const hasFile  = !!(msg.photo || msg.document);
     let projectId: string;
+    // 1단계: 정적 매핑
     const byThread = findProjectByChatAndThread(msg.chat.id, threadId);
-    if (byThread) { projectId = byThread.project_id; }
+    if (byThread) {
+      projectId = byThread.project_id;
+      if (process.env.DEBUG) console.error(`[poller] 정적 매핑: chat=${msg.chat.id} thread=${threadId} → ${projectId}`);
+    }
+    // 2단계: 동적 토픽 DB 조회
+    else if (threadId !== null) {
+      const topicRecord = getTopicByThread(msg.chat.id, threadId);
+      if (topicRecord) {
+        projectId = topicRecord.project_id;
+        if (process.env.DEBUG) console.error(`[poller] 동적 토픽: chat=${msg.chat.id} thread=${threadId} → ${projectId} (conv: ${topicRecord.conversation_id})`);
+      } else {
+        // 3단계: topic_sync 그룹 폴백
+        const syncProject = findTopicSyncProject(msg.chat.id);
+        if (syncProject) {
+          projectId = syncProject.project_id;
+          if (process.env.DEBUG) console.error(`[poller] topic_sync 폴백: chat=${msg.chat.id} thread=${threadId} → ${projectId}`);
+        } else if (text) {
+          const byKw = findProjectByKeyword(text); projectId = byKw?.project_id ?? "unknown";
+        } else { projectId = "unknown"; }
+      }
+    }
     else if (text) { const byKw = findProjectByKeyword(text); projectId = byKw?.project_id ?? "unknown"; }
     else { projectId = "unknown"; }
     insertPending({

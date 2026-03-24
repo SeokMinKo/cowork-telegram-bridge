@@ -6,6 +6,7 @@ let _db: Database | null = null;
 
 function resolveDbPath(): string {
   const raw = process.env.DB_PATH ?? "./data/bridge.db";
+  if (raw === ":memory:") return raw;
   return resolve(raw.replace(/^~/, process.env.HOME ?? ""));
 }
 
@@ -55,7 +56,21 @@ CREATE TABLE IF NOT EXISTS session_map (
   is_active     INTEGER NOT NULL DEFAULT 0,
   started_at    TEXT NOT NULL DEFAULT (datetime('now')),
   expires_at    TEXT NOT NULL DEFAULT (datetime('now', '+2 hours'))
-);`;
+);
+CREATE TABLE IF NOT EXISTS conversation_topics (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  conversation_id  TEXT NOT NULL,
+  project_id       TEXT NOT NULL,
+  chat_id          INTEGER NOT NULL,
+  thread_id        INTEGER NOT NULL,
+  topic_name       TEXT NOT NULL,
+  status           TEXT NOT NULL DEFAULT 'open',
+  created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+  closed_at        TEXT,
+  UNIQUE(conversation_id, project_id)
+);
+CREATE INDEX IF NOT EXISTS idx_ct_project ON conversation_topics(project_id);
+CREATE INDEX IF NOT EXISTS idx_ct_chat_thread ON conversation_topics(chat_id, thread_id);`;
 
 const SEED_SQL = `
 INSERT OR IGNORE INTO meta (key, value) VALUES ('poll_offset',    '0');
@@ -65,8 +80,10 @@ INSERT OR IGNORE INTO meta (key, value) VALUES ('server_start',   datetime('now'
 export function initDb(): Database {
   if (_db) return _db;
   const dbPath = resolveDbPath();
-  const dir = dirname(dbPath);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  if (dbPath !== ":memory:") {
+    const dir = dirname(dbPath);
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  }
   const db = new Database(dbPath, { create: true });
   db.run("PRAGMA journal_mode = WAL;");
   db.run("PRAGMA foreign_keys = ON;");
