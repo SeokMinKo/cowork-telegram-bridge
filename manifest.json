@@ -1,8 +1,8 @@
 {
-  "dxt_version": "0.1",
+  "manifest_version": "0.3",
   "name": "telegram-cowork",
   "display_name": "Telegram Cowork Bridge",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Cowork 프로젝트와 Telegram을 연결하는 MCP 브릿지. 메시지 수신, 발송, 파일 전송, 진행 상황 알림을 지원합니다.",
   "author": {
     "name": "Ko",
@@ -30,12 +30,10 @@
   ],
   "server": {
     "type": "binary",
+    "entry_point": "server/telegram-cowork",
     "mcp_config": {
-      "command": "/Users/lov2fn/.bun/bin/bun",
-      "args": [
-        "run",
-        "${__dirname}/src/server.ts"
-      ],
+      "command": "${__dirname}/server/telegram-cowork",
+      "args": [],
       "env": {
         "TELEGRAM_BOT_TOKEN": "${user_config.TELEGRAM_BOT_TOKEN}",
         "DB_PATH": "${__dirname}/data/bridge.db",
