@@ -77,3 +77,24 @@ export async function editMessage(opts: { chat_id: number; message_id: number; t
 export async function getUpdates(offset: number): Promise<unknown[]> {
   return call<unknown[]>("getUpdates", { offset, timeout: 5 });
 }
+
+// --- Forum Topic Management ---
+
+export interface ForumTopicResult { message_thread_id: number; name: string; icon_color: number; }
+
+export async function createForumTopic(opts: {
+  chat_id: number; name: string; icon_color?: number;
+}): Promise<ForumTopicResult> {
+  if (!opts.name || opts.name.length > 128) throw new Error("토픽 이름은 1~128자여야 합니다");
+  const body: Record<string, unknown> = { chat_id: opts.chat_id, name: opts.name };
+  if (opts.icon_color != null) body.icon_color = opts.icon_color;
+  return call<ForumTopicResult>("createForumTopic", body);
+}
+
+export async function closeForumTopic(chat_id: number, message_thread_id: number): Promise<boolean> {
+  return call<boolean>("closeForumTopic", { chat_id, message_thread_id });
+}
+
+export async function reopenForumTopic(chat_id: number, message_thread_id: number): Promise<boolean> {
+  return call<boolean>("reopenForumTopic", { chat_id, message_thread_id });
+}

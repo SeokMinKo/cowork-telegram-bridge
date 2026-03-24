@@ -14,6 +14,10 @@ import { listProjects }      from "./tools/list_projects";
 import { getBotStatus }      from "./tools/get_bot_status";
 import { runAlert }          from "./tools/run_alert";
 import { createSendProgress } from "./tools/send_progress";
+import { createConversationTopic } from "./tools/create_conversation_topic";
+import { closeConversationTopic }  from "./tools/close_conversation_topic";
+import { getConversationTopic }    from "./tools/get_conversation_topic";
+import { listConversationTopics }  from "./tools/list_conversation_topics";
 import { initSessionMap }    from "./store/session_map";
 import { createProgressServer } from "./http/progress_server";
 import { MessageTracker }    from "./http/message_tracker";
@@ -61,6 +65,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     { name: "get_bot_status", description: "봇 상태 및 운영 지표 조회",              inputSchema: { type: "object", properties: {} } },
     { name: "run_alert",      description: "프로젝트 채팅으로 알림 전송",            inputSchema: { type: "object", required: ["project_id","title","body"], properties: { project_id: { type: "string" }, title: { type: "string" }, body: { type: "string" }, level: { type: "string", enum: ["info","success","warning","error"] }, file_path: { type: "string" } } } },
     { name: "send_progress",  description: "작업 진행 상황을 Telegram에 실시간 전송 (세션 등록 + 활성화)", inputSchema: { type: "object", required: ["project_id","chat_id","message_id","status","phase"], properties: { project_id: { type: "string" }, chat_id: { type: "number" }, thread_id: { type: "number" }, message_id: { type: "number" }, status: { type: "string" }, phase: { type: "string", enum: ["thinking","tool","done"] }, session_id: { type: "string" } } } },
+    { name: "create_conversation_topic", description: "대화에 대한 Telegram 토픽 생성 (topic_sync 프로젝트 전용, 멱등)", inputSchema: { type: "object", required: ["project_id","conversation_id","topic_name"], properties: { project_id: { type: "string" }, conversation_id: { type: "string" }, topic_name: { type: "string", description: "1~128자" }, icon_color: { type: "number" } } } },
+    { name: "close_conversation_topic", description: "대화 토픽 닫기 (라이프사이클 동기화)", inputSchema: { type: "object", required: ["project_id","conversation_id"], properties: { project_id: { type: "string" }, conversation_id: { type: "string" } } } },
+    { name: "get_conversation_topic", description: "대화의 Telegram 토픽 정보 조회", inputSchema: { type: "object", required: ["project_id","conversation_id"], properties: { project_id: { type: "string" }, conversation_id: { type: "string" } } } },
+    { name: "list_conversation_topics", description: "프로젝트의 모든 대화 토픽 목록 조회", inputSchema: { type: "object", required: ["project_id"], properties: { project_id: { type: "string" }, status: { type: "string", enum: ["open","closed"] } } } },
   ],
 }));
 
@@ -77,6 +85,10 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
       case "get_bot_status": result = await getBotStatus();                 break;
       case "run_alert":      result = await runAlert(args as any);          break;
       case "send_progress":  result = await sendProgressFn(args as any);    break;
+      case "create_conversation_topic": result = await createConversationTopic(args as any); break;
+      case "close_conversation_topic":  result = await closeConversationTopic(args as any);  break;
+      case "get_conversation_topic":    result = await getConversationTopic(args as any);    break;
+      case "list_conversation_topics":  result = await listConversationTopics(args as any);  break;
       default: return { content: [{ type: "text", text: `알 수 없는 도구: ${name}` }], isError: true };
     }
     return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };

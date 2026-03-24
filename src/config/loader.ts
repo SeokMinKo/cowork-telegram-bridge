@@ -5,6 +5,8 @@ export interface ProjectConfig {
   project_id: string; description: string; chat_id: number;
   thread_id: number | null; folder_path: string;
   keywords: string[]; alert_on_schedule: boolean;
+  topic_sync?: boolean;
+  topic_icon_color?: number;
 }
 export interface SecurityConfig {
   allowed_sender_ids: number[]; unknown_sender_policy: "silent_drop" | "reply_reject";
@@ -34,7 +36,18 @@ function validate(raw: unknown): BridgeConfig {
   };
   if (security.allowed_sender_ids.length === 0)
     console.warn("[cowork-telegram-bridge] ⚠️  allowed_sender_ids가 비어있습니다. chats.json에 허용할 sender ID를 추가하세요.");
-  return { version: obj["version"] as number, security, default_dm_chat_id: (obj["default_dm_chat_id"] as number) ?? 0, projects: obj["projects"] as ProjectConfig[] };
+  const projects = obj["projects"] as ProjectConfig[];
+  const syncChatIds = new Set<number>();
+  for (const p of projects) {
+    if (p.topic_sync) {
+      if (p.thread_id != null)
+        console.warn(`[config] ⚠️ ${p.project_id}: topic_sync=true이면 thread_id는 null이어야 합니다`);
+      if (syncChatIds.has(p.chat_id))
+        console.warn(`[config] ⚠️ chat_id ${p.chat_id}에 topic_sync 프로젝트가 2개 이상입니다`);
+      syncChatIds.add(p.chat_id);
+    }
+  }
+  return { version: obj["version"] as number, security, default_dm_chat_id: (obj["default_dm_chat_id"] as number) ?? 0, projects };
 }
 
 export function loadConfig(): BridgeConfig {
@@ -63,6 +76,11 @@ export function findProjectByChatAndThread(chat_id: number, thread_id: number | 
   const { projects } = getConfig();
   if (thread_id !== null) return projects.find(p => p.chat_id === chat_id && p.thread_id === thread_id) ?? null;
   return projects.find(p => p.chat_id === chat_id && p.thread_id === null) ?? null;
+}
+
+export function findTopicSyncProject(chat_id: number): ProjectConfig | null {
+  const { projects } = getConfig();
+  return projects.find(p => p.chat_id === chat_id && p.topic_sync === true) ?? null;
 }
 
 export function findProjectByKeyword(text: string): ProjectConfig | null {
