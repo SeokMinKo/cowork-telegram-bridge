@@ -1,0 +1,73 @@
+{
+  "dxt_version": "0.1",
+  "name": "telegram-cowork",
+  "display_name": "Telegram Cowork Bridge",
+  "version": "0.1.0",
+  "description": "Cowork 프로젝트와 Telegram을 연결하는 MCP 브릿지. 메시지 수신, 발송, 파일 전송, 진행 상황 알림을 지원합니다.",
+  "author": {
+    "name": "Ko",
+    "url": "https://github.com/SeokMinKo"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SeokMinKo/cowork-telegram-bridge"
+  },
+  "homepage": "https://github.com/SeokMinKo/cowork-telegram-bridge",
+  "support": "https://github.com/SeokMinKo/cowork-telegram-bridge/issues",
+  "tools": [
+    { "name": "get_messages", "description": "미처리 Telegram 메시지 조회" },
+    { "name": "send_message", "description": "Telegram 텍스트 전송 (4096자 자동분할)" },
+    { "name": "send_file", "description": "로컬 파일 Telegram 전송 (최대 50MB)" },
+    { "name": "mark_handled", "description": "메시지 처리 완료 기록 (필수 호출)" },
+    { "name": "list_projects", "description": "등록된 프로젝트 목록 조회" },
+    { "name": "get_bot_status", "description": "봇 상태 및 운영 지표 조회" },
+    { "name": "run_alert", "description": "프로젝트 채팅으로 알림 전송" },
+    { "name": "send_progress", "description": "작업 진행 상황을 Telegram에 실시간 전송" },
+    { "name": "create_conversation_topic", "description": "대화 토픽 생성" },
+    { "name": "close_conversation_topic", "description": "대화 토픽 종료" },
+    { "name": "get_conversation_topic", "description": "대화 토픽 조회" },
+    { "name": "list_conversation_topics", "description": "프로젝트의 대화 토픽 목록 조회" }
+  ],
+  "server": {
+    "type": "node",
+    "entry_point": "src/server.ts",
+    "mcp_config": {
+      "command": "bun",
+      "args": [
+        "run",
+        "${__dirname}/src/server.ts"
+      ],
+      "env": {
+        "TELEGRAM_BOT_TOKEN": "${user_config.TELEGRAM_BOT_TOKEN}",
+        "DB_PATH": "${__dirname}/data/bridge.db",
+        "CHATS_CONFIG_PATH": "${__dirname}/config/chats.json",
+        "HOOK_SECRET": "${user_config.HOOK_SECRET}"
+      }
+    }
+  },
+  "keywords": ["telegram", "bot", "messaging", "bridge", "cowork", "mcp"],
+  "license": "MIT",
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": ["darwin"],
+    "runtimes": {
+      "bun": ">=1.1.0"
+    }
+  },
+  "user_config": {
+    "TELEGRAM_BOT_TOKEN": {
+      "type": "string",
+      "title": "Telegram Bot Token",
+      "description": "BotFather에서 발급받은 봇 토큰 (예: 123456:ABC-DEF...)",
+      "required": true,
+      "sensitive": true
+    },
+    "HOOK_SECRET": {
+      "type": "string",
+      "title": "Hook Secret",
+      "description": "Progress webhook 인증 시크릿 (기본값: cowork-bridge-secret)",
+      "required": false,
+      "sensitive": true
+    }
+  }
+}

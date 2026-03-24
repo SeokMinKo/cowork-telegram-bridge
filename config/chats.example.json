@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "security": {
+    "allowed_sender_ids": [123456789],
+    "unknown_sender_policy": "silent_drop"
+  },
+  "default_dm_chat_id": 123456789,
+  "projects": [
+    {
+      "project_id": "my-project",
+      "description": "내 프로젝트 설명",
+      "chat_id": 123456789,
+      "thread_id": null,
+      "folder_path": "/path/to/project",
+      "keywords": ["키워드1", "keyword2"],
+      "alert_on_schedule": true
+    }
+  ]
+}
