@@ -32,7 +32,7 @@
     "type": "node",
     "entry_point": "src/server.ts",
     "mcp_config": {
-      "command": "bun",
+      "command": "/Users/lov2fn/.bun/bin/bun",
       "args": [
         "run",
         "${__dirname}/src/server.ts"
